@@ -28,13 +28,16 @@ target_link_libraries(benchmark orderbook)
 add_executable(baseline benchmarks/baseline.cpp)
 target_link_libraries(baseline orderbook)
 
-add_executable(stress benchmarks/stress.cpp)
+add_executable(stress benchmarks/stress_small.cpp)
 target_link_libraries(stress orderbook)
+
+add_executable(compare benchmarks/compare.cpp)
+target_link_libraries(compare orderbook)
 
 # Optional: clang-tidy
 find_program(CLANG_TIDY clang-tidy)
 if(CLANG_TIDY)
-    set_target_properties(tests benchmark baseline stress PROPERTIES
+    set_target_properties(tests benchmark baseline stress compare PROPERTIES
         CXX_CLANG_TIDY "${CLANG_TIDY}"
     )
 endif()

@@ -1,39 +1,35 @@
-# Order Book
+# nano-orderbook
 
-High-performance limit order book in C++20. 6x faster than std::map baseline.
+`nano-orderbook` is a C++20 single-threaded limit order book that keeps price levels, order lookup, and order allocation on predictable memory paths for low-latency add, cancel, and match operations.
 
-## Build
+## Install
 
 ```bash
-g++ -std=c++20 -O3 -march=native -DNDEBUG -I include -I benchmarks tests/correctness.cpp -o tests
-g++ -std=c++20 -O3 -march=native -DNDEBUG -I include -I benchmarks benchmarks/compare.cpp -o compare
-./tests && ./compare
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
 ```
 
-## Performance
+## Usage
 
-Comparison from `benchmarks/compare.cpp` (1M ops, same workload):
-
-```
-             Optimized   std::map    Speedup
-Add p50:     16ns        100ns       6.3x
-Add p99:     66ns        1148ns      17x
-Cancel p50:  111ns       371ns       3.3x
-Match p50:   35ns        53ns        1.5x
+```bash
+$ ./build/tests
+=== Order Book Correctness Tests ===
+...
+=== All tests passed ===
 ```
 
-Results vary by CPU, compiler, and environment. Run `compare` for your system.
+```bash
+$ ./build/compare
+=== Order Book Comparison (same workload) ===
+...
+Optimized (array + pool):
+  Add:    p50=...
+Baseline (std::map):
+  Add:    p50=...
+```
 
-## Design
+## How It Works
 
-Array-indexed price levels (O(1) lookup), 64-byte cache-aligned orders, custom memory pool, sentinel-based intrusive lists. No malloc in hot path.
+The book indexes integer price levels in an array, stores orders in a fixed pool, and links orders through intrusive per-level queues. The benchmark uses `rdtsc` on x86 and `steady_clock` elsewhere, so compare numbers only within the same machine, compiler, and workload.
 
-**Assumptions:** Sequential order IDs, single-threaded, integer tick prices.
-
-## TODO
-
-- Bitmap + TZCNT/LZCNT for O(1) best price updates (eliminate level scanning)
-- Better hash function and collision handling for random order IDs
-- Pin benchmark to isolated core, serialize rdtsc, measure timer overhead
-- Lock-free multi-threaded version with atomic best bid/ask
-- Market maker agent with inventory management
+SPDX-License-Identifier: MIT

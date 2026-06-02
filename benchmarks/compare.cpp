@@ -116,19 +116,32 @@ void bench(const char* name, std::vector<Op>& ops, double freq) {
     auto match_s = to_ns(match_lat);
 
     printf("\n%s:\n", name);
-    printf("  Add:    p50=%-4lu p90=%-4lu p99=%-4lu (n=%zu)\n",
-           add_s.p50, add_s.p90, add_s.p99, add_lat.size());
-    printf("  Cancel: p50=%-4lu p90=%-4lu p99=%-4lu (n=%zu)\n",
-           cancel_s.p50, cancel_s.p90, cancel_s.p99, cancel_lat.size());
-    printf("  Match:  p50=%-4lu p90=%-4lu p99=%-4lu (n=%zu)\n",
-           match_s.p50, match_s.p90, match_s.p99, match_lat.size());
+    printf("  Add:    p50=%-4llu p90=%-4llu p99=%-4llu (n=%zu)\n",
+           static_cast<unsigned long long>(add_s.p50),
+           static_cast<unsigned long long>(add_s.p90),
+           static_cast<unsigned long long>(add_s.p99),
+           add_lat.size());
+    printf("  Cancel: p50=%-4llu p90=%-4llu p99=%-4llu (n=%zu)\n",
+           static_cast<unsigned long long>(cancel_s.p50),
+           static_cast<unsigned long long>(cancel_s.p90),
+           static_cast<unsigned long long>(cancel_s.p99),
+           cancel_lat.size());
+    printf("  Match:  p50=%-4llu p90=%-4llu p99=%-4llu (n=%zu)\n",
+           static_cast<unsigned long long>(match_s.p50),
+           static_cast<unsigned long long>(match_s.p90),
+           static_cast<unsigned long long>(match_s.p99),
+           match_lat.size());
 }
 
 int main() {
     printf("=== Order Book Comparison (same workload) ===\n");
 
     double freq = get_cpu_freq_ghz();
-    printf("CPU: %.2f GHz, Ops: %zu\n", freq, OPS);
+    if (uses_rdtsc_timer()) {
+        printf("Timer: rdtsc, CPU: %.2f GHz, Ops: %zu\n", freq, OPS);
+    } else {
+        printf("Timer: steady_clock, Ops: %zu\n", OPS);
+    }
 
     // Generate identical workload
     WorkloadGen gen(42, 1000.0, 50000, 50.0, 0.35, 0.25, 0.05);

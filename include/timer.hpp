@@ -10,28 +10,50 @@
 
 namespace ob {
 
+#if defined(__x86_64__) || defined(__i386__)
+#define OB_HAS_RDTSC 1
+#else
+#define OB_HAS_RDTSC 0
+#endif
+
+inline constexpr bool uses_rdtsc_timer() noexcept {
+    return OB_HAS_RDTSC != 0;
+}
+
 // rdtsc for cycle-accurate timing
 inline uint64_t rdtsc() noexcept {
+#if OB_HAS_RDTSC
     uint32_t lo, hi;
     __asm__ volatile(
         "rdtsc"
         : "=a"(lo), "=d"(hi)
     );
     return (static_cast<uint64_t>(hi) << 32) | lo;
+#else
+    auto now = std::chrono::steady_clock::now().time_since_epoch();
+    return static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(now).count()
+    );
+#endif
 }
 
 // rdtscp with serialization (more accurate for benchmarks)
 inline uint64_t rdtscp() noexcept {
+#if OB_HAS_RDTSC
     uint32_t lo, hi, aux;
     __asm__ volatile(
         "rdtscp"
         : "=a"(lo), "=d"(hi), "=c"(aux)
     );
     return (static_cast<uint64_t>(hi) << 32) | lo;
+#else
+    return rdtsc();
+#endif
 }
 
 // full fence + rdtsc for most accurate start timing
 inline uint64_t rdtsc_start() noexcept {
+#if OB_HAS_RDTSC
     uint32_t lo, hi;
     __asm__ volatile(
         "cpuid\n\t"
@@ -40,10 +62,14 @@ inline uint64_t rdtsc_start() noexcept {
         :: "rbx", "rcx"
     );
     return (static_cast<uint64_t>(hi) << 32) | lo;
+#else
+    return rdtsc();
+#endif
 }
 
 // rdtscp + fence for most accurate end timing
 inline uint64_t rdtsc_end() noexcept {
+#if OB_HAS_RDTSC
     uint32_t lo, hi;
     __asm__ volatile(
         "rdtscp\n\t"
@@ -52,10 +78,16 @@ inline uint64_t rdtsc_end() noexcept {
         :: "rcx"
     );
     return (static_cast<uint64_t>(hi) << 32) | lo;
+#else
+    return rdtsc();
+#endif
 }
 
 // get cpu frequency from /proc/cpuinfo (linux)
 inline double get_cpu_freq_ghz() noexcept {
+#if !OB_HAS_RDTSC
+    return 1.0;
+#else
     std::ifstream cpuinfo("/proc/cpuinfo");
     std::string line;
     while (std::getline(cpuinfo, line)) {
@@ -76,6 +108,7 @@ inline double get_cpu_freq_ghz() noexcept {
 
     auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
     return static_cast<double>(c2 - c1) / static_cast<double>(ns);
+#endif
 }
 
 // convert cycles to nanoseconds
@@ -142,5 +175,7 @@ public:
         dest_ = rdtsc_end() - start_;
     }
 };
+
+#undef OB_HAS_RDTSC
 
 } // namespace ob
